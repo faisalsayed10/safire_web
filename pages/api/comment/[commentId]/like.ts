@@ -1,4 +1,4 @@
-// Like / Dislike API route
+// Like / Dislike API route (for comments)
 
 import createNotificationOnLike from "@lib/notification-handlers/createNotificationOnLike";
 import deleteNotificationOnUnlike from "@lib/notification-handlers/deleteNotificationOnUnlike";
@@ -11,14 +11,14 @@ import prisma from "@lib/prisma";
 export default withSession(
   async (req: NextApiRequest & { session: Session }, res: NextApiResponse) => {
     try {
-      const postId = req.query.postId as string;
+      const commentId = req.query.commentId as string;
       const user: User = await req.session.get("user");
       if (!user)
         return res.status(403).json({ message: "You are not logged in!" });
 
       const like = await prisma.like.findFirst({
         where: {
-          postId,
+          commentId,
           userId: user.id,
         },
       });
@@ -26,25 +26,25 @@ export default withSession(
       if (!like) {
         await prisma.like.create({
           data: {
-            postId,
+            commentId,
             userId: user.id,
           },
         });
 
-        await createNotificationOnLike(user.username, postId, null)
+        await createNotificationOnLike(user.username, null, commentId);
 
-        return res.json({ message: "Liked the post" });
+        return res.json({ message: "Liked the comment" });
       } else {
         await prisma.like.deleteMany({
           where: {
-            postId,
+            commentId,
             userId: user.id,
           },
         });
 
-        await deleteNotificationOnUnlike(user.username, postId, null)
+        await deleteNotificationOnUnlike(user.username, null, commentId);
 
-        return res.json({ message: "Disliked the post" });
+        return res.json({ message: "Disliked the comment" });
       }
     } catch (err) {
       console.error(err);

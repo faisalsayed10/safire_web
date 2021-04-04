@@ -1,11 +1,11 @@
 import prisma from "@lib/prisma";
 
-export default async (sender: string, recipient: string) => {
+export default async (recipient: string, sender: string) => {
   return await prisma.notification.create({
     data: {
       recipient,
       sender,
-      type: "NEW_DM",
+      type: "FOLLOW",
     },
   });
 };

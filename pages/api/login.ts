@@ -1,13 +1,12 @@
 // Login route
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@lib/prisma";
 import bcrypt from "bcryptjs";
 import withSession from "@lib/session";
 import { Session } from "next-iron-session";
 import { validateLoginData } from "@utils/userValidators";
 
-const prisma = new PrismaClient();
 
 export default withSession(
   async (req: NextApiRequest & { session: Session }, res: NextApiResponse) => {
@@ -18,26 +17,26 @@ export default withSession(
 
       const user = await prisma.user.findUnique({
         where: { email },
-        rejectOnNotFound: true,
       });
 
-      if (!user.confirmed) {
+      if (!user) return res.status(404).json({ message: "User not found" })
+
+      if (!user.confirmed)
         return res.json({ message: "Please confirm your email to login" });
-      }
 
       const passwordIsValid = await bcrypt.compare(password, user.password);
 
       if (!passwordIsValid) {
         return res.status(403).json({ password: "Password is incorrect" });
       }
-
+      // TODO: exclude the password and following list
       req.session.set("user", user);
       await req.session.save();
 
       return res.json(user);
     } catch (error) {
       console.error(error);
-      return res.status(404).json({ message: "User not found" });
+      return res.status(500).json({ message: error.message});
     }
   }
 );

@@ -2,13 +2,11 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import { validateSignupData } from "@utils/userValidators";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import sgMail from "@sendgrid/mail";
 import jwt from "jsonwebtoken";
 import { text, html } from "@lib/email";
-
-const prisma = new PrismaClient();
+import prisma from "@lib/prisma";
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -29,8 +27,21 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       confirmPassword,
     };
     const { valid, errors } = validateSignupData(newUser);
+    const userAlreadyExists = await prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            email
+          },
+          {
+            username
+          }
+        ]
+      }
+    })
 
     if (!valid) return res.status(400).json(errors);
+    if (userAlreadyExists) return res.status(400).json({ message: "User with this username/email already exists" })
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -73,9 +84,11 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
-    return res.json({ message: "Signup success. Please confirm your email." });
+    return res.json({
+      message: "Signup success! Please check your inbox to confirm your email.",
+    });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "User already exists" });
+    return res.status(500).json({ message: "An unexpected error occurred" });
   }
 };

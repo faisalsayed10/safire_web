@@ -9,10 +9,10 @@ import initMiddleware from "@lib/initMiddleware";
 import { UploadApiErrorResponse, UploadApiResponse } from "cloudinary";
 import withSession from "@lib/session";
 import { NextApiRequestWithFormData } from "@utils/types";
-import { PrismaClient, User } from "@prisma/client";
+import { User } from "@prisma/client";
+import prisma from "@lib/prisma";
 
 const parser = new DatauriParser();
-const prisma = new PrismaClient();
 const upload = multer();
 
 const multerAny = initMiddleware(upload.any());
@@ -66,12 +66,12 @@ export default withSession(
               result: UploadApiResponse
             ) => {
               if (error) return res.json({ error: error.message });
-
               const updatedUser = await prisma.user.update({
                 where: { id: user.id },
                 data: { imageUrl: result.url },
               });
 
+              // TODO: exclude the password and following list
               req.session.set("user", updatedUser);
               await req.session.save();
 
